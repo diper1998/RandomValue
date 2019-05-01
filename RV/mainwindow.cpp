@@ -35,8 +35,10 @@ void MainWindow::on_BUTTON_clicked()
     WIZARD.k = ui->lineEdit_k->text().toInt();
     WIZARD.a = ui->lineEdit_a->text().toDouble();
     WIZARD.sigma = ui->lineEdit_Sigma->text().toDouble();
-    double begin = ui->lineEdit_Begin->text().toDouble();
-    double end = ui->lineEdit_End->text().toDouble();
+
+
+   // double begin;
+   // double end;
 
     WIZARD.SetMassifs();
 
@@ -69,43 +71,45 @@ void MainWindow::on_BUTTON_clicked()
     WIZARD.SetDistibution();
     WIZARD.SetSampleDistibution();
     WIZARD.SetD();
-    WIZARD.SetDS();
-    WIZARD.SetHistogram();
-    WIZARD.SetZ();
-    WIZARD.SetDensity();
-    WIZARD.SetDensityH();
-    WIZARD.SetQ();
-   // WIZARD.SetR();
-    //WIZARD.SetFR();
     WIZARD.SetDen();
-    WIZARD.SetCheck(begin, end);
-    WIZARD.SetFR();
+    WIZARD.SetDS();
+    if(ui->radioButton_UseTable->isChecked()){
+        for(int i = 0; i < WIZARD.k; i++){
+            WIZARD.histogram[i][0] = QVariant(ui->TABLE_3->item(i, 0)->text()).toDouble();
+            WIZARD.histogram[i][1] = QVariant(ui->TABLE_3->item(i, 1)->text()).toDouble();
+        }
 
-     WIZARD.SetTmp();
+        WIZARD.SetHistogram(1);
 
-    for(int i = 0; i < WIZARD.k; i++){
-        ui->TABLE_1->insertRow(i);
-        WriteTable_1(i,WIZARD.z[i], WIZARD.f[i], WIZARD.h[i], WIZARD.densityH[i]);
-
+    } else {
+        WIZARD.SetHistogram(0);
     }
+
+    WIZARD.CheckHypothesis();
 
     for(int i = 0; i < WIZARD.k; i++){
         ui->TABLE_3->insertRow(i);
-        WriteTable_3(i, WIZARD.mCheck[i][0], WIZARD.mCheck[i][1], WIZARD.q[i]);
+        WriteTable_3(i, WIZARD.histogramArray[i*2], WIZARD.histogramArray[i*2+1], WIZARD.hArray[i*2], WIZARD.q[i]);
 
     }
 
-/*
+
+    WIZARD.SetZ();
+    WIZARD.SetDensity();
+
+    WIZARD.SetDensityH();
+
     for(int i = 0; i < WIZARD.k; i++){
         ui->TABLE_1->insertRow(i);
-        WriteTable_1(i,WIZARD.z[i], WIZARD.f[i], WIZARD.h[i], WIZARD.densityH[i]);
+        WriteTable_1(i, WIZARD.z[i], WIZARD.f[i], WIZARD.h[i],fabs(WIZARD.f[i] - WIZARD.h[i]));
 
     }
 
-*/
+
 
     ui->label_Range->setText("R^ (Range) = " + QVariant(WIZARD.range).toString());
     ui->label_D->setText("D (max|Fj-F^j|) = " + QVariant(WIZARD.D).toString());
+     ui->label_rv->setText("rv = " + QVariant(WIZARD.xIter).toString());
     ui->label_DS->setText("|D - S^2| = " + QVariant(WIZARD.DS).toString());
     ui->label_maxDensityH->setText("max|fj - nj/n*dj| = " + QVariant(WIZARD.maxDensityH).toString());
     ui->label_R->setText("R0 = " + QVariant(WIZARD.R).toString());
@@ -135,7 +139,15 @@ void MainWindow::on_BUTTON_clicked()
 
     //PaintGraph_1(WIZARD.randomValue, WIZARD.rectangle, WIZARD.n, numbHistogram, "H"+QVariant(numbHistogram).toString());
     //numbHistogram++;
-    PaintGraph_1(WIZARD.tmp, WIZARD.tmpF, WIZARD.k*2, numbHistogram, "H"+QVariant(numbHistogram).toString());
+/*
+    for(int i = 0; i < WIZARD.k; i++){
+
+        PaintGraph_1((WIZARD.histogramArray+2*i), (WIZARD.hArray+2*i), 2, numbHistogram, "H"+QVariant(numbHistogram).toString());
+        numbHistogram++;
+    }
+
+*/
+    PaintGraph_1(WIZARD.histogramArray, WIZARD.hArray, WIZARD.k*2, numbHistogram, "H"+QVariant(numbHistogram).toString());
     numbHistogram++;
 
     PaintGraph_1(WIZARD.randomValueD, WIZARD.density, 1000, numbHistogram, "H"+QVariant(numbHistogram).toString());
@@ -183,19 +195,21 @@ void MainWindow::WriteTable_1(int i, double X, double Y, double Z, double Q){
 }
 
 
-void MainWindow::WriteTable_3(int i, double X, double Y, double Z){
+void MainWindow::WriteTable_3(int i, double X, double Y, double Z, double Q){
 
 
     QVariant qX = X;
     QVariant qY = Y;
     QVariant qZ = Z;
+    QVariant qQ = Q;
+
 
 
 
     ui->TABLE_3->setItem(i, 0, CreateItem(qX));
     ui->TABLE_3->setItem(i, 1, CreateItem(qY));
     ui->TABLE_3->setItem(i, 2, CreateItem(qZ));
-
+    ui->TABLE_3->setItem(i, 3, CreateItem(qQ));
 
 
 }
@@ -381,6 +395,109 @@ void MainWindow::on_pushButton_CLEAN_clicked()
     numbGraph = 0;
     numbHistogram = 0;
     numb = 0;
+
+
+}
+
+
+void MainWindow::on_pushButton_THISRV_clicked()
+{
+    for(int i = 0; i < WIZARD.k; i++){
+        delete[] WIZARD.histogram[i];
+    }
+
+    delete[] WIZARD.histogram;
+
+
+     delete[] WIZARD.histogramArray;
+
+     delete[] WIZARD.h;
+
+     delete[] WIZARD.hArray;
+
+     delete[] WIZARD.countRV;
+
+
+    delete[] WIZARD.z;
+
+    delete[] WIZARD.f;
+
+
+     WIZARD.k = ui->lineEdit_k->text().toInt();
+
+
+
+     WIZARD.histogram = new double*[WIZARD.k];
+
+     WIZARD.histogramArray = new double[2*WIZARD.k];
+
+     WIZARD.h = new double[WIZARD.k];
+
+     WIZARD.hArray = new double[2*WIZARD.k];
+
+     WIZARD.countRV = new int[WIZARD.k];
+
+     for(int i = 0; i < WIZARD.k; i++){
+          WIZARD.histogram[i] = new double[2];
+     }
+
+     WIZARD.z = new double[WIZARD.k];
+     WIZARD.f = new double[WIZARD.k];
+
+     if(ui->radioButton_UseTable->isChecked()){
+         for(int i = 0; i < WIZARD.k; i++){
+             WIZARD.histogram[i][0] = QVariant(ui->TABLE_3->item(i, 0)->text()).toDouble();
+             WIZARD.histogram[i][1] = QVariant(ui->TABLE_3->item(i, 1)->text()).toDouble();
+         }
+
+         WIZARD.SetHistogram(1);
+
+     } else {
+         WIZARD.SetHistogram(0);
+     }
+
+     WIZARD.CheckHypothesis();
+
+     for(int i = 0; i < WIZARD.k; i++){
+         ui->TABLE_3->insertRow(i);
+         WriteTable_3(i, WIZARD.histogramArray[i*2], WIZARD.histogramArray[i*2+1], WIZARD.hArray[i*2], WIZARD.q[i]);
+
+     }
+
+
+     WIZARD.SetZ();
+     WIZARD.SetDensity();
+
+     WIZARD.SetDensityH();
+
+     for(int i = 0; i < WIZARD.k; i++){
+         ui->TABLE_1->insertRow(i);
+         WriteTable_1(i, WIZARD.z[i], WIZARD.f[i], WIZARD.h[i],fabs(WIZARD.f[i] - WIZARD.h[i]));
+
+     }
+
+      ui->label_maxDensityH->setText("max|fj - nj/n*dj| = " + QVariant(WIZARD.maxDensityH).toString());
+
+      /*
+      for(int i = 0; i < WIZARD.k; i++){
+
+          PaintGraph_1((WIZARD.histogramArray+2*i), (WIZARD.hArray+2*i), 2, numbHistogram, "H"+QVariant(numbHistogram).toString());
+          numbHistogram++;
+      }
+      */
+
+      ui->label_R->setText("R0 = " + QVariant(WIZARD.R).toString());
+      ui->label_FR->setText("F(R) = " + QVariant(WIZARD.FR).toString());
+
+      if(WIZARD.FR < WIZARD.a){
+          ui->label_Hypothesis->setText("Hypothesis: unacceptable");
+      } else {
+          ui->label_Hypothesis->setText("Hypothesis: accepted");
+      }
+
+
+     PaintGraph_1(WIZARD.histogramArray, WIZARD.hArray, WIZARD.k*2, numbHistogram, "H"+QVariant(numbHistogram).toString());
+     numbHistogram++;
 
 
 }

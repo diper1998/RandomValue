@@ -14,19 +14,21 @@ public:
     double* randomValueD;
 
 
+    double xIter;
     double* distribution;
     double* distribution_;
     double* sampleDistribution;
+    double* sampleDistribution2;
     double* sampleDistribution_;
+
     double** histogram;
-    double** mCheck;
-    double* mQ;
+    double* histogramArray;
     double* h;
-    double* rectangle;
-    double* z;
-    double* f;
-    double* densityH;
-    double* q;
+    double* hArray;
+    int* countRV;
+      double* z;
+      double* f;
+
     double* density;
 
     double* tmp;
@@ -51,33 +53,39 @@ public:
 
 
 
+    double* q;
+
 
     void SetMassifs(){
         randomValue = new double[n];
         randomValue_ = new double[2*n];
+        //nj = new double[k];
         randomValueD = new double[1000];
         distribution = new double[n];
         distribution_ = new double[1000];
         sampleDistribution = new double[n];
+        sampleDistribution2 = new double[n];
         sampleDistribution_ = new double[2*n];
 
-
         histogram = new double*[k];
-        mCheck = new double*[k];
+
+        histogramArray = new double[2*k];
+
+        h = new double[k];
+
+        hArray = new double[2*k];
+
+        countRV = new int[k];
+
         for(int i = 0; i < k; i++){
-            histogram[i] = new double[n/k];
-            mCheck[i] = new double[2];
+             histogram[i] = new double[2];
         }
 
 
-        h = new double[k];
-        rectangle = new double[n];
+
         z = new double[k];
         f = new double[k];
-        densityH = new double[k];
-        q = new double[k];
-        tmp = new double[2*k];
-        tmpF = new double[2*k];
+
         density = new double[1000];
 
     }
@@ -114,7 +122,13 @@ public:
 
 
     double GetF(double value){
-        return 1-exp(-value*value/(2*sigma*sigma));
+        double res;
+        if(value < 0){
+            res = 0;
+        } else {
+            res =  1-exp(-value*value/(2*sigma*sigma));
+        }
+        return res;
     }
 
     void SetDistibution(){
@@ -138,15 +152,14 @@ public:
         for(int i = 0; i < 1000; i++){
         distribution_[i] = GetF(randomValueD[i]);
         }
-
-
-
     }
 
     void SetSampleDistibution(){
 
         for(int i = 0; i < n; i++){
         sampleDistribution[i] = (1.0/n)*(i+1);
+        sampleDistribution2[i] = (1.0/n)*(i);
+
         }
 
 
@@ -180,10 +193,6 @@ public:
 
             }
 
-
-
-
-
     }
 
     void SetMedian(){
@@ -200,11 +209,20 @@ public:
 
     void SetD(){
         D = 0;
-        double tmp = 0;
+        double tmp = abs(distribution[0] - 0);
+        double tmp1 = abs(distribution[0] - sampleDistribution2[0]);
+
         for(int i = 0; i < n; i++){
             tmp = abs(distribution[i]-sampleDistribution[i]);
+            tmp1 = abs(distribution[i]-sampleDistribution2[i]);
+
+            if(tmp < tmp1){
+                tmp = tmp1;
+            }
+
             if(D < tmp){
                 D = tmp;
+                xIter = randomValue[i];
             }
         }
     }
@@ -214,114 +232,119 @@ public:
     }
 
 
-    void SetHistogram(){
+    void SetHistogram(int tableFlag){
+
+        double maxRV = randomValue[n-1];
+        double step = maxRV/k;
+
+        if(tableFlag == 0) {
 
         for(int i = 0; i < k; i++){
-            for(int j = 0; j < n/k; j++){
-                histogram[i][j] = randomValue[i*(n/k)+j];
+            histogram[i][0] = i*step;
+            histogram[i][1] = i*step + step;
+        }
+        }
+
+
+        int index = 0;
+        /*
+        for(int i = 0; i < 2*k; i++){
+
+
+            histogramArray[i] = histogram[index][0];
+
+
+            histogramArray[i+1] = histogram[index][1];
+
+            i++;
+            index++;
+
+        }
+        */
+
+
+        for(int i = 0; i < 2*k; i++){
+
+
+            if(i%2==0)
+            histogramArray[i] = histogram[i/2][0];
+
+            if(i%2!=0)
+            histogramArray[i] = histogram[i/2][1];
+
+
+        }
+
+
+        for(int i = 0; i < k; i++){
+            countRV[i] = 0;
+            for(int j = 0; j < n; j++){
+                if(randomValue[j] >= histogram[i][0] && randomValue[j] < histogram[i][1])
+                    countRV[i]+=1;
             }
         }
 
 
         for(int i = 0; i < k; i++){
-            h[i] = (n/k)/(n*(histogram[i][n/k-1]-histogram[i][0]));
+
+            h[i] = countRV[i]/(n*(histogram[i][1] - histogram[i][0]));
         }
 
-        for(int i = 0; i < k; i++){
-            for(int j = 0; j < n/k; j++){
-            rectangle[j+i*n/k] = h[i];
-            }
+
+        int j = 0;
+/*
+        for(int i = 0; i < 2*k; i++){
+
+            hArray[i] = h[j];
+            hArray[i+1] = h[j];
+
+            i++;
+            j++;
         }
+        */
+
+
+        for(int i = 0; i < 2*k; i++){
+
+            if(i%2==0)
+            hArray[i] = h[i/2];
+
+            if(i%2!=0)
+            hArray[i] = h[i/2];
+        }
+
+
 
     }
 
     void SetZ(){
+
         for(int i = 0; i < k; i++){
-            z[i] = histogram[i][0] + (histogram[i][n/k-1]-histogram[i][0])/2;
+            z[i] = histogram[i][0] + (histogram[i][1]-histogram[i][0])/2;
         }
+
     }
 
     void SetDensity(){
+
         for(int i = 0; i < k; i++){
             f[i] = z[i]/(sigma*sigma)*exp(-z[i]*z[i]/(2*sigma*sigma));
         }
+
     }
 
     void SetDensityH(){
+
         maxDensityH = 0;
+        double densityMax = 0;
         for(int i = 0; i < k; i++){
-            densityH[i] = abs(f[i] - h[i]);
-            if(maxDensityH < densityH[i]){
-               maxDensityH = densityH[i];
+            densityMax = abs(f[i] - h[i]);
+            if(maxDensityH < densityMax){
+               maxDensityH = densityMax;
             }
         }
+
     }
-
-
-    void SetQ(){
-
-        q[0] = GetF(z[0]) - GetF(0);
-        for(int i = 1; i < k; i++){
-              q[i] = GetF(z[i]) - GetF(z[i-1]);
-        }
-    }
-
-    void SetR(){
-        R = 0;
-        for(int i = 1; i < k; i++){
-            R+= (n/k-n*q[i])*(n/k-n*q[i])/(n*q[i]);
-        }
-    }
-
-
-    int GetFactorial(int arg){
-        if(arg == 0) return 1;
-        return arg*GetFactorial(arg-1);
-    }
-
-    //!
-    void SetFR(){
-        FR = 1-(pow(2,-(k-1)/2.0)/GetFactorial((k-1)/2.0))*pow(R,(k-1)/2.0-1)*exp(-R/2.0)*R;
-    }
-
-    void SetTmp(){
-        int i = 0;
-
-        tmp[0] = histogram[0][0];
-        tmp[2*k-1] = histogram[k-1][n/k-1];
-        i++;
-
-        for(int j = 1; j < 2*k-1; j++ ){
-            if(j%2!=0){
-         tmp[j] = histogram[i][0];
-            i++;
-            } else {
-                tmp[j] = tmp[j-1];
-            }
-
-
-       //  tmpF[i] = h[j];
-
-            }
-
-
-        tmpF[0] = h[0];
-        tmpF[2*k-1] = h[k-1];
-        i = 1;
-        for(int j = 1; j < 2*k-1; j++ ){
-            if(j%2!=0){
-         tmpF[j] = tmpF[j-1];
-            } else {
-                tmpF[j] = h[i];
-                i++;
-            }
-
-            }
-
-
-       }
-
-
 
 
     void SetDen(){
@@ -331,32 +354,29 @@ public:
         }
     }
 
-    void SetCheck(double begin, double end){
+    void CheckHypothesis(){
+
+        q = new double[k];
 
         R = 0;
+
         for(int i = 0; i < k; i++){
-            for(int j = 0; j < 2; j++){
-                mCheck[i][j] = histogram[i][j*(n/k-1)];
-            }
+            q[i] = GetF(histogram[i][1]) - GetF(histogram[i][0]);
+
+            R+= (countRV[i]-n*q[i])*(countRV[i]-n*q[i])/(n*q[i]);
+
         }
 
-       double tmpq = 0;
 
-      //  q = GetF(mCheck[0][0])-GetF(begin);
+        FR = 1 - (pow(R/2, R/2-1)*exp(-R/4)/tgamma(R/2)/pow(2, R/2))*(R);
 
-      //  R += (n*q)*(n*q)/(n*q);
 
-      //  q = GetF(end)-GetF(mCheck[k-1][1]);
 
-     //   R += (n*q)*(n*q)/(n*q);
 
-    for(int i = 0 ; i < k; i++){
-        tmpq = GetF(mCheck[i][1])-GetF(mCheck[i][0]);
-        q[i] = tmpq;
-        R += (n/k-1-n*tmpq)*(n/k-1-n*tmpq)/(n*tmpq);
     }
 
-}
+
+
 };
 
 #endif // MAGIC_H
